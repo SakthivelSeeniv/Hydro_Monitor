@@ -1,0 +1,6 @@
+{
+  "name": "Water Tracker",
+  "description": "A feature-rich, beautiful Android-style Water Tracking application featuring daily intake calculators, customizable smart reminders, dynamic liquid-filled visuals, and high-fidelity mock notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

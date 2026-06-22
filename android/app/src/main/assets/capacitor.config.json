@@ -1,0 +1,8 @@
+{
+	"appId": "com.hydrotrack.app",
+	"appName": "HydroTrack",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	}
+}
