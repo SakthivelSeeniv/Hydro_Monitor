@@ -24,7 +24,7 @@ export const setupLocalNotifications = async (settings: AppSettings) => {
           actions: [
             {
               id: 'log_50',
-              title: 'Drink 50ml',
+              title: 'Drank 50ml',
               foreground: false
             }
           ]
