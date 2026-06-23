@@ -38,6 +38,8 @@ import {
   Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { setupLocalNotifications } from './utils/notifications';
 
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
@@ -87,6 +89,30 @@ export default function App() {
   useEffect(() => {
     runResetCheck();
   }, [targetSimulatedDate]);
+
+  useEffect(() => {
+    // Schedule local notifications natively via capacitor
+    setupLocalNotifications(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    const listenForActions = async () => {
+      await LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
+        if (notificationAction.actionId === 'log_250') {
+          handleLogIntake(250);
+        } else if (notificationAction.actionId === 'log_500') {
+          handleLogIntake(500);
+        } else if (notificationAction.actionId === 'tap') {
+          // just opened the app, we could maybe open a specific tab
+          setActiveTab('dashboard');
+        }
+      });
+    };
+    listenForActions();
+    return () => {
+      LocalNotifications.removeAllListeners();
+    };
+  }, [todayLogged, logs, history, streak, settings]); // Dependencies for handleLogIntake closure
 
   const runResetCheck = () => {
     const activeDate = targetSimulatedDate || undefined;
@@ -260,144 +286,72 @@ export default function App() {
   const percentage = settings.dailyTarget > 0 ? Math.min((todayLogged / settings.dailyTarget) * 100, 100) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-2 sm:p-6 text-slate-800 bg-grid-pattern">
+    <div className="w-full h-[100dvh] bg-slate-50 flex flex-col text-slate-800 bg-grid-pattern overflow-hidden relative">
       
       {/* Background radial gradients for ambient subtle light feel */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100/40 rounded-full filter blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-100/30 rounded-full filter blur-3xl pointer-events-none" />
 
-      {/* Main Outer container containing instruction title */}
-      <div className="max-w-4xl w-full flex flex-col md:flex-row gap-8 items-center justify-center p-2 z-10">
-        
-        {/* Left Side: Desktop details panel describing features */}
-        <div className="hidden md:flex flex-col max-w-sm space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-              <Droplets className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">HydroTrack</h1>
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest">Smart Hydration</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 w-fit">
-            <span className="text-orange-500">🔥</span>
-            <span className="font-bold text-orange-700 text-sm">{streak} Day Streak</span>
-          </div>
-
-          <p className="text-sm text-slate-500 leading-relaxed">
-            A standalone high-fidelity offline <b>Android Water companion</b>. Formulated with smart adaptive intake controllers, interactive notifications, and diagnostic charts.
-          </p>
-
-          <div className="space-y-3 pt-2">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-xs text-slate-600 flex gap-3">
-              <span className="text-blue-600 font-bold">✓</span>
-              <span><b>Adaptive Hydration Calculator:</b> Personalizes limits using biological weight factors.</span>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-xs text-slate-600 flex gap-3">
-              <span className="text-blue-600 font-bold">✓</span>
-              <span><b>Interactive Push Reminders:</b> Increment intake counts inline inside mock notification bars.</span>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-xs text-slate-600 flex gap-3">
-              <span className="text-blue-600 font-bold">✓</span>
-              <span><b>Durable Offline Storage:</b> Automatically saves tracking data using standard browser database buffers.</span>
-            </div>
-          </div>
-
-          {targetSimulatedDate && (
-            <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl text-xs text-amber-800">
-              <span className="font-bold">⚠️ Simulated Time Travel Active: </span>
-              Logged inputs are mapped to <b>{targetSimulatedDate.toLocaleDateString()}</b>.
-            </div>
-          )}
-        </div>
-
-        {/* Center: The Smartphone Android hardware frame */}
-        <div className="relative w-full max-w-[375px] h-[780px] bg-slate-900 rounded-[48px] p-3 border-4 border-slate-800 shadow-[0_30px_70px_-15px_rgba(15,23,42,0.12)] flex flex-col overflow-hidden">
-          
-          {/* Real Speaker / Camera Punch-hole Screen Notch */}
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-full z-50 flex items-center justify-between px-3 border border-slate-800">
-            <div className="w-10 h-1 bg-slate-800 rounded-full" /> {/* speaker */}
-            <div className="w-3.5 h-3.5 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-950/85" /> {/* lens */}
-            </div>
-          </div>
-
-          {/* Android Glass Screen Canvas Container */}
-          <div className="flex-1 bg-slate-50 rounded-[40px] overflow-hidden relative flex flex-col border border-slate-100/50">
-            
-            {/* 1. Android Status Bar */}
-            <div id="android-status-bar" className="h-10 pt-5 px-6 flex justify-between items-center text-slate-500 text-[10px] font-bold select-none z-40 bg-slate-50 relative shrink-0">
-              <span className="font-mono">{currentTime || '08:42'}</span>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-blue-600" />
-                <span>{targetSimulatedDate ? getTodayDateString(targetSimulatedDate) : 'Today'}</span>
-                <Wifi className="w-3.5 h-3.5 text-slate-400" />
-                <Battery className="w-3.5 h-3.5 text-slate-400" />
+      {/* Simulated Water Splash/Droplet Confetti Animation when 100% target goal hit */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center"
+          >
+            {/* CSS Splash animations ripples */}
+            <div className="relative w-44 h-44 flex items-center justify-center">
+              <motion.div 
+                className="absolute inset-0 bg-cyan-500/20 rounded-full border border-cyan-400/40"
+                initial={{ scale: 0.5, opacity: 0.8 }}
+                animate={{ scale: 1.5, opacity: 0 }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: 'easeOut' }}
+              />
+              <motion.div 
+                className="absolute inset-4 bg-blue-500/10 rounded-full border border-blue-400/30"
+                initial={{ scale: 0.5, opacity: 0.9 }}
+                animate={{ scale: 1.3, opacity: 0 }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: 0.4, ease: 'easeOut' }}
+              />
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-green-300">
+                <Sparkles className="w-10 h-10 text-white animate-bounce" />
               </div>
             </div>
 
-            {/* Simulated Water Splash/Droplet Confetti Animation when 100% target goal hit */}
-            <AnimatePresence>
-              {showCelebration && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center"
-                >
-                  {/* CSS Splash animations ripples */}
-                  <div className="relative w-44 h-44 flex items-center justify-center">
-                    <motion.div 
-                      className="absolute inset-0 bg-cyan-500/20 rounded-full border border-cyan-400/40"
-                      initial={{ scale: 0.5, opacity: 0.8 }}
-                      animate={{ scale: 1.5, opacity: 0 }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: 'easeOut' }}
-                    />
-                    <motion.div 
-                      className="absolute inset-4 bg-blue-500/10 rounded-full border border-blue-400/30"
-                      initial={{ scale: 0.5, opacity: 0.9 }}
-                      animate={{ scale: 1.3, opacity: 0 }}
-                      transition={{ repeat: Infinity, duration: 1.5, delay: 0.4, ease: 'easeOut' }}
-                    />
-                    <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-green-300">
-                      <Sparkles className="w-10 h-10 text-white animate-bounce" />
-                    </div>
-                  </div>
+            <h3 className="text-xl font-black font-display text-green-400 mt-4">Goal Achieved! 🎉</h3>
+            <p className="text-xs text-slate-300 mt-2 max-w-xs">
+              Amazing job! You hit 100% of your daily water intake target. Keep the hydrated streak alive!
+            </p>
+            
+            <button
+              type="button"
+              onClick={() => setShowCelebration(false)}
+              className="mt-6 py-2 px-5 bg-green-500 hover:bg-green-400 text-slate-950 text-xs font-black rounded-xl cursor-pointer shadow-md transition-all scale-100 hover:scale-105 active:scale-95"
+            >
+              Keep Tracking
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                  <h3 className="text-xl font-black font-display text-green-400 mt-4">Goal Achieved! 🎉</h3>
-                  <p className="text-xs text-slate-300 mt-2 max-w-xs">
-                    Amazing job! You hit 100% of your daily water intake target. Keep the hydrated streak alive!
-                  </p>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setShowCelebration(false)}
-                    className="mt-6 py-2 px-5 bg-green-500 hover:bg-green-400 text-slate-950 text-xs font-black rounded-xl cursor-pointer shadow-md transition-all scale-100 hover:scale-105 active:scale-95"
-                  >
-                    Keep Tracking
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      {/* Notification Manager Floating Banners Absolute Layer */}
+      <NotificationManager
+        settings={settings}
+        onLogWater={handleLogIntake}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        activeBanner={activeBanner}
+        setActiveBanner={setActiveBanner}
+        mode="banner"
+      />
 
-            {/* Notification Manager Floating Banners Absolute Layer */}
-            <NotificationManager
-              settings={settings}
-              onLogWater={handleLogIntake}
-              notifications={notifications}
-              setNotifications={setNotifications}
-              activeBanner={activeBanner}
-              setActiveBanner={setActiveBanner}
-              mode="banner"
-            />
-
-            {/* Core Router Body Layout */}
-            <div className="flex-1 overflow-hidden relative p-4 flex flex-col">
-              
-              {/* Force screen blockage if onboarding is incomplete */}
-              {!settings.onboarding.completed ? (
+      {/* Core Router Body Layout */}
+      <div className="flex-1 overflow-hidden relative p-4 flex flex-col z-10">
+        
+        {/* Force screen blockage if onboarding is incomplete */}
+        {!settings.onboarding.completed ? (
                 <Onboarding onComplete={handleCompleteOnboarding} />
               ) : (
                 <>
@@ -534,7 +488,7 @@ export default function App() {
 
             {/* 4. Android Bottom Screen Interactive Navigation bar */}
             {settings.onboarding.completed && (
-              <div className="h-16 border-t border-slate-200/60 bg-white flex justify-around items-center px-4 shrink-0 shadow-lg">
+              <div className="h-16 border-t border-slate-200/60 bg-white flex justify-around items-center px-4 shrink-0 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.1)] relative z-20">
                 <button
                   type="button"
                   id="tab-dashboard"
@@ -557,16 +511,6 @@ export default function App() {
 
                 <button
                   type="button"
-                  id="tab-reminders"
-                  onClick={() => setActiveTab('notifications')}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === 'notifications' ? 'text-blue-600' : 'text-slate-450 text-slate-400 hover:text-slate-600'}`}
-                >
-                  <Bell className="w-5 h-5" />
-                  <span className="text-[9px] font-bold mt-1">Alerts</span>
-                </button>
-
-                <button
-                  type="button"
                   id="tab-settings"
                   onClick={() => setActiveTab('settings')}
                   className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === 'settings' ? 'text-blue-600' : 'text-slate-450 text-slate-400 hover:text-slate-600'}`}
@@ -576,9 +520,6 @@ export default function App() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
