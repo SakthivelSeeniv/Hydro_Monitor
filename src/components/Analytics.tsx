@@ -22,7 +22,7 @@ export default function Analytics({ history, logs, dailyTarget, streak }: Analyt
   while (filledDays.length < 7) {
     const d = new Date();
     d.setDate(d.getDate() - (7 - filledDays.length));
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     filledDays.unshift({
       date: dateStr,
       target: dailyTarget,

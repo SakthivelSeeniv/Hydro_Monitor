@@ -146,19 +146,6 @@ export default function NotificationSettings({
               onChange={(e) => setTarget(Math.max(100, parseInt(e.target.value, 10) || 0))}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white"
             />
-            {/* Quick selectors */}
-            <div className="flex gap-1">
-              {[1500, 2000, 2500, 3000].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setTarget(v)}
-                  className={`px-2 py-1 text-[10px] font-mono rounded-lg border transition-all ${target === v ? 'bg-blue-50 border-blue-200 text-blue-600 font-bold shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -177,6 +164,7 @@ export default function NotificationSettings({
               onChange={(e) => setFrequency(parseInt(e.target.value, 10))}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-blue-600 focus:bg-white cursor-pointer"
             >
+              <option value="2">Every 2 Mins</option>
               <option value="15">Every 15 Mins</option>
               <option value="30">Every 30 Mins</option>
               <option value="45">Every 45 Mins</option>

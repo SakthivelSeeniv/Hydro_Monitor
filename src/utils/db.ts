@@ -152,7 +152,7 @@ export function checkDailyReset(simulatedDate?: Date): { resetOccurred: boolean;
 
     // Sum up the last day's consumption (excluding today)
     const lastDayLogs = logs.filter(log => {
-      const logDate = log.timestamp.split('T')[0];
+      const logDate = getTodayDateString(new Date(log.timestamp));
       return logDate === lastOpened;
     });
 
@@ -204,7 +204,7 @@ export function checkDailyReset(simulatedDate?: Date): { resetOccurred: boolean;
 
   // Calculate today's current logs total
   const logs = loadLogs();
-  const todayLogs = logs.filter(log => log.timestamp.split('T')[0] === todayStr);
+  const todayLogs = logs.filter(log => getTodayDateString(new Date(log.timestamp)) === todayStr);
   loggedAmount = todayLogs.reduce((sum, log) => sum + log.amount, 0);
 
   return { resetOccurred, loggedAmount };

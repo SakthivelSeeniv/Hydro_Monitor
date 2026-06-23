@@ -21,7 +21,6 @@ import { AppSettings, WaterLog, DailyHistory, ReminderNotification, OnboardingDa
 import WaterBottle from './components/WaterBottle';
 import Onboarding from './components/Onboarding';
 import Analytics from './components/Analytics';
-import NotificationManager from './components/NotificationManager';
 import NotificationSettings from './components/NotificationSettings';
 import { 
   Plus, 
@@ -61,10 +60,6 @@ export default function App() {
   // Celebration burst visual toggle state
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
 
-  // Notification states
-  const [notifications, setNotifications] = useState<ReminderNotification[]>([]);
-  const [activeBanner, setActiveBanner] = useState<ReminderNotification | null>(null);
-
   // Load and check state factors
   useEffect(() => {
     // 1. Fill beautiful mock logs if first time loading, so graphs are populated
@@ -98,10 +93,8 @@ export default function App() {
   useEffect(() => {
     const listenForActions = async () => {
       await LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
-        if (notificationAction.actionId === 'log_250') {
-          handleLogIntake(250);
-        } else if (notificationAction.actionId === 'log_500') {
-          handleLogIntake(500);
+        if (notificationAction.actionId === 'log_50') {
+          handleLogIntake(50);
         } else if (notificationAction.actionId === 'tap') {
           // just opened the app, we could maybe open a specific tab
           setActiveTab('dashboard');
@@ -335,17 +328,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Notification Manager Floating Banners Absolute Layer */}
-      <NotificationManager
-        settings={settings}
-        onLogWater={handleLogIntake}
-        notifications={notifications}
-        setNotifications={setNotifications}
-        activeBanner={activeBanner}
-        setActiveBanner={setActiveBanner}
-        mode="banner"
-      />
 
       {/* Core Router Body Layout */}
       <div className="flex-1 overflow-hidden relative p-4 flex flex-col z-10">

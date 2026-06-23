@@ -23,12 +23,9 @@ export const setupLocalNotifications = async (settings: AppSettings) => {
           id: 'WATER_LOG',
           actions: [
             {
-              id: 'log_250',
-              title: 'Drink 250ml'
-            },
-            {
-              id: 'log_500',
-              title: 'Drink 500ml'
+              id: 'log_50',
+              title: 'Drink 50ml',
+              foreground: false
             }
           ]
         }
