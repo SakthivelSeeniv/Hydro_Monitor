@@ -107,7 +107,53 @@ export default function App() {
           if (settings.customSoundData) {
             const audio = new Audio(settings.customSoundData);
             audio.volume = 0.5;
+            audio.loop = true;
             audio.play().catch(e => console.warn('Failed to play custom sound', e));
+            setTimeout(() => {
+              audio.pause();
+              audio.currentTime = 0;
+            }, 6000);
+            return;
+          }
+
+          const presetName = settings.customSoundName || 'Modern Blip';
+          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          if (ctx) {
+            const playTone = () => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              
+              if (presetName === 'Water Splash') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+              } else if (presetName === 'Distant Chime') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+              } else {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.setValueAtTime(220, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+              }
+              
+              osc.start();
+              osc.stop(ctx.currentTime + 0.6);
+            };
+
+            playTone();
+            const interval = setInterval(playTone, 1000);
+            setTimeout(() => {
+              clearInterval(interval);
+            }, 6000);
           }
         } catch (e) {
           console.warn('Failed to play local notification sound', e);
