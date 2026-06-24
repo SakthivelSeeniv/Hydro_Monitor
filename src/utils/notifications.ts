@@ -32,6 +32,30 @@ export const setupLocalNotifications = async (settings: AppSettings) => {
       ]
     });
 
+    let soundFile = 'blip.wav';
+    let channelId = 'hydrotrack_blip';
+    
+    if (settings.customSoundName === 'Water Splash') {
+      soundFile = 'splash.wav';
+      channelId = 'hydrotrack_splash';
+    } else if (settings.customSoundName === 'Distant Chime') {
+      soundFile = 'chime.wav';
+      channelId = 'hydrotrack_chime';
+    }
+
+    try {
+      await LocalNotifications.createChannel({
+        id: channelId,
+        name: 'HydroTrack Reminders',
+        description: 'Water reminder notifications',
+        importance: 5,
+        visibility: 1,
+        sound: soundFile
+      });
+    } catch (e) {
+      console.warn('Failed to create channel', e);
+    }
+
     const [startH, startM] = settings.startHour.split(':').map(Number);
     const [endH, endM] = settings.endHour.split(':').map(Number);
 
@@ -59,6 +83,8 @@ export const setupLocalNotifications = async (settings: AppSettings) => {
           allowWhileIdle: true
         },
         actionTypeId: 'WATER_LOG',
+        channelId: channelId,
+        sound: soundFile
       });
 
       currentMinutes += settings.reminderFrequency;
