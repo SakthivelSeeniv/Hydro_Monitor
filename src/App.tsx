@@ -22,6 +22,7 @@ import WaterBottle from './components/WaterBottle';
 import Onboarding from './components/Onboarding';
 import Analytics from './components/Analytics';
 import NotificationSettings from './components/NotificationSettings';
+import GymTracker from './components/GymTracker';
 import { 
   Plus, 
   Flame, 
@@ -34,7 +35,8 @@ import {
   Battery, 
   Wifi, 
   Sparkles,
-  Info
+  Info,
+  Dumbbell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -52,7 +54,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState<string>('');
 
   // App Navigation Tabs
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'notifications' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'notifications' | 'settings' | 'gym'>('dashboard');
 
   // Interactive Container entry size input state
   const [customVolumeInput, setCustomVolumeInput] = useState<string>('50');
@@ -83,6 +85,13 @@ export default function App() {
   // Sync state and run resetting triggers
   useEffect(() => {
     runResetCheck();
+    
+    // Check for daily reset periodically
+    const resetInterval = setInterval(() => {
+      runResetCheck();
+    }, 60000);
+    
+    return () => clearInterval(resetInterval);
   }, [targetSimulatedDate]);
 
   useEffect(() => {
@@ -101,22 +110,26 @@ export default function App() {
         }
       });
       
-      await LocalNotifications.addListener('localNotificationReceived', () => {
+      await LocalNotifications.addListener('localNotificationReceived', (notification) => {
         // Play the custom ringtone if the app is active
         try {
-          if (settings.customSoundData) {
-            const audio = new Audio(settings.customSoundData);
+          const isGym = notification.extra?.type === 'gym';
+          const soundData = isGym ? settings.gymSettings?.customSoundData : settings.customSoundData;
+          const duration = isGym ? 20000 : 6000;
+          const presetName = isGym ? settings.gymSettings?.customSoundName : (settings.customSoundName || 'Modern Blip');
+          
+          if (soundData) {
+            const audio = new Audio(soundData);
             audio.volume = 0.5;
             audio.loop = true;
             audio.play().catch(e => console.warn('Failed to play custom sound', e));
             setTimeout(() => {
               audio.pause();
               audio.currentTime = 0;
-            }, 6000);
+            }, duration);
             return;
           }
 
-          const presetName = settings.customSoundName || 'Modern Blip';
           const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
           if (ctx) {
             const playTone = () => {
@@ -153,7 +166,7 @@ export default function App() {
             const interval = setInterval(playTone, 1000);
             setTimeout(() => {
               clearInterval(interval);
-            }, 6000);
+            }, duration);
           }
         } catch (e) {
           console.warn('Failed to play local notification sound', e);
@@ -243,6 +256,38 @@ export default function App() {
           completed: newTotal >= settings.dailyTarget
         });
       }
+      setHistory(currentHistory);
+      saveHistory(currentHistory);
+    }
+  };
+
+  const handleResetWaterIntake = () => {
+    const todayStr = getTodayDateString(targetSimulatedDate || undefined);
+    
+    // filter out today's logs
+    const updatedLogs = logs.filter(log => {
+      const logDate = getTodayDateString(new Date(log.timestamp));
+      return logDate !== todayStr;
+    });
+    setLogs(updatedLogs);
+    saveLogs(updatedLogs);
+
+    setTodayLogged(0);
+
+    // update history for today
+    const currentHistory = loadHistory();
+    const existingTodayIndex = currentHistory.findIndex(h => h.date === todayStr);
+    
+    // if the goal was already reached today, decrement streak
+    if (existingTodayIndex >= 0 && currentHistory[existingTodayIndex].completed) {
+      const updatedStreak = Math.max(0, streak - 1);
+      setStreak(updatedStreak);
+      saveStreak(updatedStreak);
+    }
+
+    if (existingTodayIndex >= 0) {
+      currentHistory[existingTodayIndex].total = 0;
+      currentHistory[existingTodayIndex].completed = false;
       setHistory(currentHistory);
       saveHistory(currentHistory);
     }
@@ -487,24 +532,18 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {/* TAB 3: ALERTS SIMULATOR HOVER LIST */}
-                  {activeTab === 'notifications' && (
+                  {/* TAB 3: GYM TRACKER */}
+                  {activeTab === 'gym' && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
                       className="flex-1 overflow-hidden"
                     >
-                      <div className="h-full overflow-y-auto pb-10">
-                        <NotificationManager
-                          settings={settings}
-                          onLogWater={handleLogIntake}
-                          notifications={notifications}
-                          setNotifications={setNotifications}
-                          activeBanner={activeBanner}
-                          setActiveBanner={setActiveBanner}
-                          mode="tray"
-                        />
-                      </div>
+                      <GymTracker
+                        settings={settings}
+                        onUpdateSettings={updateSettingsDirect}
+                        targetSimulatedDate={targetSimulatedDate}
+                      />
                     </motion.div>
                   )}
 
@@ -520,6 +559,7 @@ export default function App() {
                         onSaveSettings={updateSettingsDirect}
                         resetOnboarding={handleResetOnboarding}
                         simulateMidnight={triggerSimulatedMidnight}
+                        onResetWaterIntake={handleResetWaterIntake}
                       />
                     </motion.div>
                   )}
@@ -548,6 +588,16 @@ export default function App() {
                 >
                   <Activity className="w-5 h-5" />
                   <span className="text-[9px] font-bold mt-1">Analytics</span>
+                </button>
+                
+                <button
+                  type="button"
+                  id="tab-gym"
+                  onClick={() => setActiveTab('gym')}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${activeTab === 'gym' ? 'text-blue-600' : 'text-slate-450 text-slate-400 hover:text-slate-600'}`}
+                >
+                  <Dumbbell className="w-5 h-5" />
+                  <span className="text-[9px] font-bold mt-1">Gym</span>
                 </button>
 
                 <button

@@ -1,19 +1,21 @@
 import React, { useRef, useState } from 'react';
-import { AppSettings, OnboardingData } from '../types';
-import { Settings, Volume2, Bell, Save, ArrowRight, Target, Clock, Music } from 'lucide-react';
+import { AppSettings, OnboardingData, GymSettings } from '../types';
+import { Settings, Volume2, Bell, Save, ArrowRight, Target, Clock, Music, Dumbbell, Trash } from 'lucide-react';
 
 interface NotificationSettingsProps {
   settings: AppSettings;
   onSaveSettings: (settings: AppSettings) => void;
   resetOnboarding: () => void;
   simulateMidnight: () => void;
+  onResetWaterIntake: () => void;
 }
 
 export default function NotificationSettings({
   settings,
   onSaveSettings,
   resetOnboarding,
-  simulateMidnight
+  simulateMidnight,
+  onResetWaterIntake
 }: NotificationSettingsProps) {
   const [target, setTarget] = useState<number>(settings.dailyTarget);
   const [frequency, setFrequency] = useState<number>(settings.reminderFrequency);
@@ -22,9 +24,37 @@ export default function NotificationSettings({
   const [maxNotifs, setMaxNotifs] = useState<number>(settings.maxNotificationsPerDay);
   const [soundName, setSoundName] = useState<string>(settings.customSoundName);
   const [soundData, setSoundData] = useState<string | null>(settings.customSoundData);
+  const [gymSettings, setGymSettings] = useState<GymSettings>(settings.gymSettings);
   const [showSavedToast, setShowSavedToast] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleDay = (dayIndex: number) => {
+    const isSelected = gymSettings.days.includes(dayIndex);
+    let newDays;
+    if (isSelected) {
+      newDays = gymSettings.days.filter(d => d !== dayIndex);
+    } else {
+      newDays = [...gymSettings.days, dayIndex].sort();
+    }
+    setGymSettings({ ...gymSettings, days: newDays });
+  };
+  
+  const handleGymSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setGymSettings(prev => ({
+          ...prev,
+          customSoundName: file.name,
+          customSoundData: result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Sound File Upload Handler: Convert to base64 so it stores fully offline in localStorage
   const handleSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,6 +94,7 @@ export default function NotificationSettings({
       maxNotificationsPerDay: maxNotifs,
       customSoundName: soundName,
       customSoundData: soundData,
+      gymSettings,
     };
     onSaveSettings(updated);
     setShowSavedToast(true);
@@ -257,26 +288,95 @@ export default function NotificationSettings({
         </div>
       </div>
 
-      {/* Developer Tool: Test automatic midnight reset */}
-      <div className="bg-rose-50 border border-rose-100 p-5 rounded-2xl space-y-3 shadow-sm">
-        <h4 className="text-xs font-bold text-rose-700">Advanced Simulator Lab</h4>
-        <p className="text-[10px] text-rose-600 leading-normal">
-          Simulate a calendar midnight transition instantly in your sandbox to test daily log resets, logs archiving, and Streak calculation.
-        </p>
+      {/* Gym Reminders Settings */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <Dumbbell className="w-4 h-4 text-blue-600" /> Gym Reminder Settings
+        </h3>
+        
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={gymSettings.enabled}
+            onChange={e => setGymSettings({...gymSettings, enabled: e.target.checked})}
+            className="w-4 h-4 rounded text-blue-600 border-slate-300"
+          />
+          <span className="text-sm font-bold text-slate-700">Enable Gym Reminders</span>
+        </label>
+        
+        {gymSettings.enabled && (
+          <>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reminder Days</label>
+              <div className="flex gap-1 justify-between">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => handleToggleDay(idx)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${
+                      gymSettings.days.includes(idx) 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {day[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reminder Time</label>
+              <input 
+                type="time" 
+                value={gymSettings.time}
+                onChange={e => setGymSettings({...gymSettings, time: e.target.value})}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reminder Sound (20s)</label>
+              
+              <div className="flex gap-2 items-center mb-2">
+                <Volume2 className="w-4 h-4 text-slate-400" />
+                <span className="text-sm font-bold truncate flex-1">{gymSettings.customSoundName || 'Default'}</span>
+                
+                {gymSettings.customSoundData && (
+                  <button 
+                    type="button"
+                    onClick={() => setGymSettings({...gymSettings, customSoundName: 'Buzzer', customSoundData: null})}
+                    className="text-red-500 p-1 hover:bg-red-50 rounded"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              <label className="block w-full py-2 bg-blue-50 text-blue-600 text-center text-xs font-bold rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors">
+                Upload Custom Ringtone
+                <input 
+                  type="file" 
+                  accept="audio/*" 
+                  onChange={handleGymSoundUpload} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="bg-orange-50 border border-orange-100 p-5 rounded-2xl space-y-3 shadow-sm">
+        <h4 className="text-xs font-bold text-orange-700">Data Management</h4>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={simulateMidnight}
-            className="flex-1 py-2 px-3 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+            onClick={onResetWaterIntake}
+            className="flex-1 py-2 px-3 bg-white hover:bg-orange-50 border border-orange-200 text-orange-700 text-[11px] font-bold rounded-xl transition-all cursor-pointer shadow-sm"
           >
-            Simulate Midnight Reset
-          </button>
-          <button
-            type="button"
-            onClick={resetOnboarding}
-            className="py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-bold rounded-xl transition-all cursor-pointer text-slate-500 shadow-sm"
-          >
-            Reset Onboarding
+            Reset Water Intake
           </button>
         </div>
       </div>

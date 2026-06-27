@@ -1,4 +1,4 @@
-import { WaterLog, DailyHistory, AppSettings, OnboardingData } from '../types';
+import { WaterLog, DailyHistory, AppSettings, OnboardingData, GymWorkout } from '../types';
 
 const STORAGE_KEYS = {
   LOGS: 'hydrotrack_logs',
@@ -23,6 +23,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     activityLevel: 'active',
     gender: 'female',
     completed: false,
+  },
+  gymSettings: {
+    enabled: false,
+    days: [1, 3, 5], // default Mon, Wed, Fri
+    time: '18:00',
+    customSoundName: 'Buzzer',
+    customSoundData: null,
   },
 };
 
@@ -208,6 +215,26 @@ export function checkDailyReset(simulatedDate?: Date): { resetOccurred: boolean;
   loggedAmount = todayLogs.reduce((sum, log) => sum + log.amount, 0);
 
   return { resetOccurred, loggedAmount };
+}
+
+export function loadGymWorkouts(): GymWorkout[] {
+  try {
+    const raw = localStorage.getItem('hydrotrack_gym_workouts');
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Failed to load gym workouts', e);
+  }
+  return [];
+}
+
+export function saveGymWorkouts(workouts: GymWorkout[]): void {
+  try {
+    localStorage.setItem('hydrotrack_gym_workouts', JSON.stringify(workouts));
+  } catch (e) {
+    console.error('Failed to save gym workouts', e);
+  }
 }
 
 // Generate default mock logs for the previous 7 days so statistics are beautifully populated right away!

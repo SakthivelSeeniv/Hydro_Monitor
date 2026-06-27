@@ -65,6 +65,29 @@ export const setupLocalNotifications = async (settings: AppSettings) => {
       if (id > 50) break; // sanity limit
     }
 
+    // Add gym reminders if enabled
+    if (settings.gymSettings && settings.gymSettings.enabled) {
+      const [gymH, gymM] = settings.gymSettings.time.split(':').map(Number);
+      
+      settings.gymSettings.days.forEach(day => {
+        // day is 0-6 (Sun-Sat), Capacitor weekday is 1-7 (Sun-Sat)
+        notificationsToSchedule.push({
+          id: id++,
+          title: '💪 Gym Time!',
+          body: "Time to hit the gym and crush your workout!",
+          schedule: {
+            on: {
+              weekday: day + 1,
+              hour: gymH,
+              minute: gymM
+            },
+            allowWhileIdle: true
+          },
+          extra: { type: 'gym' } // to differentiate for playing 20s ringtone
+        });
+      });
+    }
+
     if (notificationsToSchedule.length > 0) {
       await LocalNotifications.schedule({
         notifications: notificationsToSchedule
